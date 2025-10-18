@@ -97,9 +97,7 @@ class _MemoEditScreenState extends State<MemoEditScreen> {
 
   Future<void> _forceSave() async {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(seconds: 2), () async {
-      await _persistMemo(); // ✅ 타이머 끝나면 실제 저장 실행
-    });
+    await _persistMemo(); // ✅ 바로 저장 실행 (지연 X)
   }
 
   Future<void> _persistMemo() async {
