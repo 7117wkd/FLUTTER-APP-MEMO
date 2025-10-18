@@ -49,4 +49,17 @@ class MemoDatabase {
     final db = await _getDB();
     return await db.delete('memos', where: 'id = ?', whereArgs: [id]);
   }
+
+  static Future<List<Memo>> searchMemos(String keyword) async {
+    final db = await _getDB();
+    final List<Map<String, dynamic>> maps = await db.query(
+      'memos',
+      where: 'title LIKE ? OR content LIKE ?',
+      whereArgs: ['%$keyword%', '%$keyword%'],
+      orderBy: 'id DESC',
+    );
+    return List.generate(maps.length, (i) {
+      return Memo.fromMap(maps[i]);
+    });
+  }
 }
