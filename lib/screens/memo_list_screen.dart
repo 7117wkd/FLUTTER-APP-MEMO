@@ -30,11 +30,21 @@ class _MemoListScreenState extends State<MemoListScreen> {
 
   List<Memo> _applySort(List<Memo> list) {
     final sorted = List<Memo>.from(list);
+
     if (_sortOption == '제목순') {
       sorted.sort((a, b) => a.title.compareTo(b.title));
+    } else if (_sortOption == '즐겨찾기순') {
+      // ⭐ 즐겨찾기(true)가 먼저 오게
+      sorted.sort((a, b) {
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        return 0;
+      });
     } else {
+      // 최신순
       sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     }
+
     return sorted;
   }
 
@@ -59,9 +69,17 @@ class _MemoListScreenState extends State<MemoListScreen> {
 
   void _onSortPressed() {
     setState(() {
-      _sortOption = _sortOption == '최신순' ? '제목순' : '최신순';
+      if (_sortOption == '최신순') {
+        _sortOption = '제목순';
+      } else if (_sortOption == '제목순') {
+        _sortOption = '즐겨찾기순';
+      } else {
+        _sortOption = '최신순';
+      }
+
       memos = _applySort(memos);
     });
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('정렬: $_sortOption')),
     );
