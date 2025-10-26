@@ -14,7 +14,8 @@ class MemoDatabase {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT,
             content TEXT,
-            created_at TEXT
+            created_at TEXT,
+            is_favorite INTEGER DEFAULT 0
           )
         ''');
       },

@@ -10,7 +10,10 @@ class MemoListScreen extends StatefulWidget {
 
 class _MemoListScreenState extends State<MemoListScreen> {
   List<Memo> memos = [];
-  String _sortOption = '최신순'; // 🔹 현재 정렬 상태 표시
+  String _sortOption = '최신순';
+
+  // ⭐ 별 색상 상태만 따로 관리 (id 기준)
+  final Set<int> _favoriteIds = {};
 
   @override
   void initState() {
@@ -21,7 +24,7 @@ class _MemoListScreenState extends State<MemoListScreen> {
   Future<void> _loadMemos() async {
     final data = await MemoDatabase.getMemos();
     setState(() {
-      memos = _applySort(data); // 🔹 정렬 적용
+      memos = _applySort(data);
     });
   }
 
@@ -30,13 +33,16 @@ class _MemoListScreenState extends State<MemoListScreen> {
     if (_sortOption == '제목순') {
       sorted.sort((a, b) => a.title.compareTo(b.title));
     } else {
-      sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // 최신순
+      sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     }
     return sorted;
   }
 
   Future<void> _deleteMemo(int id) async {
     await MemoDatabase.deleteMemo(id);
+    setState(() {
+      _favoriteIds.remove(id); // 삭제 시 즐겨찾기 상태도 같이 제거
+    });
     _loadMemos();
   }
 
@@ -46,35 +52,40 @@ class _MemoListScreenState extends State<MemoListScreen> {
     } else {
       final results = await MemoDatabase.searchMemos(keyword);
       setState(() {
-        memos = _applySort(results); // 검색 결과도 정렬 유지
+        memos = _applySort(results);
       });
     }
   }
 
-  // 🔽 정렬 버튼 눌렀을 때 순차적으로 바꾸기
   void _onSortPressed() {
     setState(() {
       _sortOption = _sortOption == '최신순' ? '제목순' : '최신순';
       memos = _applySort(memos);
     });
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('정렬: $_sortOption')),
     );
   }
 
+  // ⭐ 즐겨찾기 토글 (DB 영향 없음)
+  void _toggleFavorite(Memo memo) async {
+    setState(() {
+      memo.isFavorite = !memo.isFavorite; // ✅ 상태 변경
+    });
+    await MemoDatabase.updateMemo(memo); // ✅ DB 반영
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('📒 메모장')),
+      appBar: AppBar(title: const Text('📒 메모장')),
       body: Column(
         children: [
-          // 🔍 (1) 검색창 + 정렬 아이콘
+          // 🔍 검색창 + 정렬 버튼
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                // 검색창
                 Expanded(
                   child: TextField(
                     decoration: InputDecoration(
@@ -90,7 +101,6 @@ class _MemoListScreenState extends State<MemoListScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // 🔽 정렬 아이콘 버튼
                 IconButton(
                   icon: const Icon(Icons.sort),
                   tooltip: '정렬',
@@ -100,14 +110,16 @@ class _MemoListScreenState extends State<MemoListScreen> {
             ),
           ),
 
-          // 📋 (2) 기존 리스트 부분
+          // 📋 메모 리스트
           Expanded(
             child: memos.isEmpty
-                ? Center(child: Text('메모가 없습니다'))
+                ? const Center(child: Text('메모가 없습니다'))
                 : ListView.builder(
               itemCount: memos.length,
               itemBuilder: (context, index) {
                 final memo = memos[index];
+                final isFav = _favoriteIds.contains(memo.id);
+
                 return Card(
                   margin:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -117,6 +129,14 @@ class _MemoListScreenState extends State<MemoListScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(memo.createdAt),
+                    // ⭐ 즐겨찾기 UI
+                    leading: IconButton(
+                      icon: Icon(
+                        memo.isFavorite ? Icons.star : Icons.star_border,
+                        color: memo.isFavorite ? Colors.amber : Colors.grey,
+                      ),
+                      onPressed: () => _toggleFavorite(memo),
+                    ),
                     onTap: () async {
                       await Navigator.push(
                         context,
